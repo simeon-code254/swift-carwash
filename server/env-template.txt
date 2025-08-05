@@ -1,0 +1,25 @@
+# MongoDB Atlas Connection
+MONGODB_URI=mongodb+srv://your_username:your_password@your_cluster.mongodb.net/swiftwash?retryWrites=true&w=majority
+
+# Server Configuration
+PORT=5000
+NODE_ENV=development
+
+# Client URLs
+CLIENT_URL=http://localhost:3000
+ADMIN_URL=http://localhost:3001
+
+# JWT Secret
+JWT_SECRET=swiftwash-super-secret-jwt-key-2024
+
+# Admin Credentials
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123
+
+# Twilio SMS Configuration
+TWILIO_ACCOUNT_SID=your_twilio_account_sid_here
+TWILIO_AUTH_TOKEN=your_twilio_auth_token_here
+SMS_FROM_NUMBER=your_twilio_phone_number_here
+
+# Test phone number (optional - for testing SMS)
+TEST_PHONE_NUMBER=your_test_phone_number_here 
