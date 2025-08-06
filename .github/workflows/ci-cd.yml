@@ -1,0 +1,183 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: |
+        cd server && npm ci
+        cd ../client && npm ci
+        cd ../admin-app && npm ci
+        cd ../workers-app && npm ci
+    
+    - name: Run tests
+      run: |
+        cd client && npm test -- --watchAll=false
+        cd ../admin-app && npm test -- --watchAll=false
+        cd ../workers-app && npm test -- --watchAll=false
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js 18.x
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: |
+        cd client && npm ci
+        cd ../admin-app && npm ci
+        cd ../workers-app && npm ci
+    
+    - name: Build client app
+      run: cd client && npm run build
+    
+    - name: Build admin app
+      run: cd admin-app && npm run build
+    
+    - name: Build workers app
+      run: cd workers-app && npm run build
+    
+    - name: Upload client build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: client-build
+        path: client/build/
+    
+    - name: Upload admin build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: admin-build
+        path: admin-app/build/
+    
+    - name: Upload workers build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: workers-build
+        path: workers-app/build/
+
+  deploy-client:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Download client build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: client-build
+        path: client/build/
+    
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./client/build
+        destination_dir: client
+
+  deploy-admin:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Download admin build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: admin-build
+        path: admin-app/build/
+    
+    - name: Deploy admin to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./admin-app/build
+        destination_dir: admin
+
+  deploy-workers:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Download workers build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: workers-build
+        path: workers-app/build/
+    
+    - name: Deploy workers to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./workers-app/build
+        destination_dir: workers
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Run security audit
+      run: |
+        cd server && npm audit --audit-level moderate
+        cd ../client && npm audit --audit-level moderate
+        cd ../admin-app && npm audit --audit-level moderate
+        cd ../workers-app && npm audit --audit-level moderate
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js 18.x
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: |
+        cd client && npm ci
+        cd ../admin-app && npm ci
+        cd ../workers-app && npm ci
+    
+    - name: Run ESLint
+      run: |
+        cd client && npx eslint src/ --ext .js,.jsx
+        cd ../admin-app && npx eslint src/ --ext .ts,.tsx
+        cd ../workers-app && npx eslint src/ --ext .ts,.tsx 
